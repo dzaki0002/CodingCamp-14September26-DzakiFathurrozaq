@@ -1,0 +1,1223 @@
+/*
+  style.css — Budget Tracker
+  ==========================
+  File ini mengatur seluruh tampilan visual aplikasi.
+  Tidak ada logika di sini, hanya aturan presentasi.
+
+  Urutan bagian:
+    1.  Reset & Base        — normalisasi browser, variabel warna/ukuran
+    2.  Layout              — grid utama halaman
+    3.  Header              — judul aplikasi
+    4.  Balance Card        — kartu saldo besar + tombol filter periode
+    5.  Summary Row         — 3 kartu ringkasan cepat
+    6.  Card                — komponen kartu putih reusable
+    7.  Section Titles      — judul tiap seksi
+    8.  Form                — input teks, number, select, tombol submit
+    9.  Custom Category     — form & chip kategori kustom
+    10. List Toolbar        — tombol sort di atas daftar transaksi
+    11. Transaction List    — daftar item pengeluaran yang bisa di-scroll
+    12. Chart               — area diagram donut + legend kustom
+    13. Empty State         — pesan "belum ada data"
+    14. Date Range Summary  — kartu summary per rentang tanggal kustom
+    15. Responsive          — penyesuaian layout untuk layar kecil (≤640px)
+*/
+
+
+/* =========================================
+   1. RESET & BASE
+   -----------------------------------------
+   Menghapus margin/padding bawaan browser
+   dan mendefinisikan variabel CSS global.
+   ========================================= */
+
+/* Box-sizing: border diikutsertakan dalam hitungan lebar/tinggi elemen */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/*
+  Variabel CSS — dipakai berulang di seluruh file.
+  Ubah nilainya di sini untuk mengganti tema warna secara global.
+*/
+:root {
+  --bg: #f4f6fb;              /* Warna latar belakang halaman (abu-abu lembut) */
+  --surface: #ffffff;         /* Warna kartu/panel (putih) */
+  --primary: #5c6ef8;         /* Warna utama: ungu-biru (tombol, aksen) */
+  --primary-hover: #4758e8;   /* Warna primary saat hover (lebih gelap) */
+  --danger: #ef4444;          /* Warna merah untuk aksi hapus / error */
+  --danger-hover: #dc2626;    /* Merah lebih gelap saat hover */
+  --text-main: #1e2235;       /* Warna teks utama (hampir hitam) */
+  --text-muted: #7a7f9a;      /* Warna teks sekunder / label (abu-abu) */
+  --border: #e4e7f0;          /* Warna garis batas elemen */
+  --radius: 14px;             /* Sudut melengkung kartu */
+  --shadow: 0 2px 16px rgba(92, 110, 248, 0.08); /* Bayangan halus kartu */
+
+  /* Warna khusus untuk 3 kategori bawaan (dipakai oleh .dot-* di bawah) */
+  --color-makanan: #f97316;       /* Oranye — Makanan */
+  --color-transportasi: #3b82f6;  /* Biru — Transportasi */
+  --color-hiburan: #a855f7;       /* Ungu — Hiburan */
+}
+
+/* Gaya dasar seluruh halaman */
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background-color: var(--bg);
+  color: var(--text-main);
+  min-height: 100vh;
+  padding: 24px 16px 48px; /* Padding atas-bawah agar konten tidak mepet tepi */
+  line-height: 1.5;
+}
+
+
+/* =========================================
+   2. LAYOUT
+   -----------------------------------------
+   Pembungkus halaman dan grid 2 kolom utama.
+   ========================================= */
+
+/* Membatasi lebar konten dan memusatkannya secara horizontal */
+.app-wrapper {
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+/*
+  Grid 2 kolom: kolom kiri (form + transaksi) | kolom kanan (chart).
+  align-items: start → kolom kanan tidak ikut memanjang mengikuti kiri.
+*/
+.main-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+/* Setiap kolom menumpuk kontennya secara vertikal dengan jarak 20px */
+.left-col,
+.right-col {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+
+/* =========================================
+   3. HEADER
+   -----------------------------------------
+   Judul dan subjudul aplikasi di bagian paling atas.
+   ========================================= */
+
+.app-header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.app-header h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--primary);
+  letter-spacing: -0.5px;
+}
+
+.app-header .subtitle {
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  margin-top: 4px;
+}
+
+
+/* =========================================
+   4. BALANCE CARD
+   -----------------------------------------
+   Kartu besar bergradient di bagian atas yang
+   menampilkan total pengeluaran dan tombol
+   filter periode (Semua / Minggu / Bulan).
+   ========================================= */
+
+.balance-card {
+  background: linear-gradient(135deg, var(--primary) 0%, #7c8ffb 100%);
+  color: #fff;
+  border-radius: var(--radius);
+  padding: 24px 28px;
+  display: flex;
+  justify-content: space-between; /* Angka di kiri, tombol di kanan */
+  align-items: flex-end;
+  gap: 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 20px rgba(92, 110, 248, 0.3);
+  flex-wrap: wrap; /* Di layar kecil tombol turun ke baris baru */
+}
+
+/* Label teks kecil di atas angka saldo */
+.balance-label {
+  font-size: 0.9rem;
+  opacity: 0.85;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  display: block;
+  margin-bottom: 4px;
+}
+
+/* Angka nominal besar */
+.balance-amount {
+  font-size: 1.8rem;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  display: block;
+}
+
+/* Grup tombol filter periode di kanan kartu saldo */
+.balance-period {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-self: flex-start;
+  margin-top: 4px;
+}
+
+/* Tombol filter periode (Semua / Minggu / Bulan) — tampilan normal */
+.period-btn {
+  background: rgba(255,255,255,0.18); /* Putih transparan */
+  color: #fff;
+  border: 1.5px solid rgba(255,255,255,0.35);
+  border-radius: 20px;
+  padding: 5px 14px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.period-btn:hover {
+  background: rgba(255,255,255,0.28);
+}
+
+/* Tombol yang sedang aktif → latar putih, teks warna primary */
+.period-btn.active {
+  background: #fff;
+  color: var(--primary);
+  border-color: #fff;
+}
+
+
+/* =========================================
+   5. SUMMARY ROW
+   -----------------------------------------
+   Tiga kartu kecil: Minggu Ini, Bulan Ini, Rata-rata/Hari.
+   Ditampilkan dalam grid 3 kolom.
+   ========================================= */
+
+.summary-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr); /* 3 kolom sama lebar */
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+/* Tiap kartu ringkasan */
+.summary-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Label kecil di atas angka (huruf kapital kecil) */
+.summary-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+/* Angka nominal di kartu ringkasan */
+.summary-value {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+/* Teks kecil di bawah angka (jumlah transaksi / keterangan) */
+.summary-count {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+
+/* =========================================
+   6. CARD
+   -----------------------------------------
+   Komponen panel putih reusable.
+   Dipakai untuk membungkus form, transaksi, chart, dll.
+   ========================================= */
+
+.card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 24px;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+}
+
+
+/* =========================================
+   7. SECTION TITLES
+   -----------------------------------------
+   Judul di dalam setiap kartu dan
+   header baris yang berisi judul + badge jumlah item.
+   ========================================= */
+
+.section-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-main);
+  margin-bottom: 16px;
+}
+
+/* Header dua kolom: judul di kiri, badge di kanan */
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+/* Saat .section-title ada di dalam .section-header, hilangkan margin bawahnya */
+.section-header .section-title {
+  margin-bottom: 0;
+}
+
+/* Badge bulat kecil yang menampilkan jumlah item */
+.item-count {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  background: var(--bg);
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-weight: 500;
+}
+
+
+/* =========================================
+   8. FORM
+   -----------------------------------------
+   Gaya untuk semua elemen form:
+   label, input teks/number, select dropdown, tombol.
+   ========================================= */
+
+/* Satu grup: label + input (ditumpuk vertikal) */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+/* Label di atas input */
+.form-group label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Input teks, number, dan select — gaya bersama */
+.form-group input,
+.form-group select {
+  padding: 10px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.95rem;
+  color: var(--text-main);
+  background: var(--bg);
+  outline: none; /* Hapus outline default browser, ganti dengan box-shadow focus */
+  transition: border-color 0.18s, box-shadow 0.18s;
+  appearance: none;         /* Sembunyikan UI default browser untuk select */
+  -webkit-appearance: none; /* Safari */
+}
+
+/* Efek fokus: border berubah warna + cahaya lembut */
+.form-group input:focus,
+.form-group select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(92, 110, 248, 0.12);
+  background: #fff;
+}
+
+/* Warna teks placeholder yang lebih lembut */
+.form-group input::placeholder {
+  color: #b0b5cc;
+}
+
+/*
+  Menambahkan ikon panah (▾) kustom ke select.
+  Karena appearance: none menghilangkan panah bawaan browser,
+  kita tambahkan manual lewat background-image SVG inline.
+*/
+.form-group select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237a7f9a' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  padding-right: 36px; /* Beri ruang agar teks tidak tertutup ikon panah */
+  cursor: pointer;
+}
+
+/* Tombol submit utama (biru penuh, lebar penuh) */
+.btn-primary {
+  width: 100%;
+  padding: 11px;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.18s, transform 0.1s;
+  margin-top: 4px;
+}
+
+.btn-primary:hover  { background: var(--primary-hover); }
+.btn-primary:active { transform: scale(0.98); } /* Sedikit menciut saat diklik */
+
+
+/* =========================================
+   9. CUSTOM CATEGORY
+   -----------------------------------------
+   Form tambah kategori kustom (nama + emoji + warna)
+   dan daftar chip kategori yang sudah dibuat.
+   ========================================= */
+
+/*
+  Layout 4 kolom: [nama panjang] [emoji kecil] [label "Warna"] [color picker] [tombol]
+  Pada layar kecil diubah di bagian responsive.
+*/
+.custom-cat-form {
+  display: grid;
+  grid-template-columns: 1fr 60px auto auto;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+/* Input teks dalam form kategori kustom */
+.custom-cat-form input[type="text"] {
+  padding: 8px 12px;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  color: var(--text-main);
+  background: var(--bg);
+  outline: none;
+  transition: border-color 0.18s, box-shadow 0.18s;
+}
+
+.custom-cat-form input[type="text"]:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(92, 110, 248, 0.12);
+  background: #fff;
+}
+
+.custom-cat-form input[type="text"]::placeholder {
+  color: #b0b5cc;
+}
+
+/* Input emoji — teks lebih besar dan tengah */
+.emoji-input {
+  text-align: center;
+  font-size: 1.1rem !important;
+}
+
+/* Teks label "Warna" di sebelah color picker */
+.color-label {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Color picker — kotak kecil berwarna yang bisa diklik */
+.custom-cat-form input[type="color"] {
+  width: 36px;
+  height: 36px;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  padding: 2px;
+  background: var(--bg);
+}
+
+/* Tombol "Tambah" — outline (tidak solid seperti btn-primary) */
+.btn-secondary {
+  padding: 8px 14px;
+  background: var(--bg);
+  color: var(--primary);
+  border: 1.5px solid var(--primary);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s;
+}
+
+.btn-secondary:hover {
+  background: var(--primary);
+  color: #fff; /* Balik warna saat hover: jadi solid */
+}
+
+/* Area chip-chip kategori kustom yang sudah ditambahkan */
+.custom-cat-list {
+  display: flex;
+  flex-wrap: wrap; /* Chip membungkus ke baris baru jika penuh */
+  gap: 8px;
+}
+
+/* Satu chip kategori (latar berwarna sesuai warna kategori) */
+.cat-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 8px;
+  border-radius: 20px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #fff;
+  background: #888; /* Warna default, akan di-override JS via style.background */
+}
+
+/* Titik kecil di kiri dalam chip */
+.cat-chip-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.5); /* Putih transparan */
+  flex-shrink: 0;
+}
+
+/* Tombol × di kanan chip untuk menghapus kategori */
+.cat-chip-del {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.7);
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0 0 0 2px;
+  transition: color 0.15s;
+}
+
+.cat-chip-del:hover { color: #fff; }
+
+
+/* =========================================
+   10. LIST TOOLBAR (Sort)
+   -----------------------------------------
+   Baris di atas daftar transaksi berisi
+   label "Urutkan:" dan 4 tombol pilihan urutan.
+   ========================================= */
+
+.list-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+/* Teks "Urutkan:" di kiri toolbar */
+.toolbar-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* Grup tombol sort */
+.sort-group {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* Tiap tombol sort — tampilan normal (belum aktif) */
+.sort-btn {
+  padding: 4px 12px;
+  border-radius: 20px;
+  border: 1.5px solid var(--border);
+  background: var(--bg);
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.sort-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+/* Tombol sort yang sedang aktif → solid primary */
+.sort-btn.active {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+
+
+/* =========================================
+   11. TRANSACTION LIST
+   -----------------------------------------
+   Daftar item pengeluaran yang bisa di-scroll.
+   Setiap item menampilkan dot warna kategori,
+   nama, kategori, harga, dan tombol hapus.
+   ========================================= */
+
+/* Wadah daftar — vertikal, max-height untuk scroll */
+.transaction-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 360px; /* Lebih dari ini akan muncul scrollbar */
+  overflow-y: auto;
+  padding-right: 4px; /* Beri ruang agar scrollbar tidak menempel konten */
+}
+
+/* Scrollbar tipis dan bersih (WebKit: Chrome, Safari, Edge) */
+.transaction-list::-webkit-scrollbar       { width: 4px; }
+.transaction-list::-webkit-scrollbar-track { background: transparent; }
+.transaction-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+/* Satu baris transaksi */
+.transaction-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  transition: box-shadow 0.15s;
+  animation: slideIn 0.2s ease; /* Animasi masuk dari atas */
+}
+
+.transaction-item:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+
+/* Animasi masuk — item baru muncul dengan efek slide turun */
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Titik warna bulat penanda kategori di kiri setiap item */
+.category-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0; /* Tidak menyusut meski konten lain memanjang */
+}
+
+/* Warna dot untuk 3 kategori bawaan (sesuai variabel CSS di :root) */
+.dot-makanan      { background: var(--color-makanan); }
+.dot-transportasi { background: var(--color-transportasi); }
+.dot-hiburan      { background: var(--color-hiburan); }
+
+/* Area teks: nama barang (atas) dan label kategori (bawah) */
+.item-info {
+  flex: 1;       /* Ambil sisa ruang */
+  min-width: 0;  /* Penting agar text-overflow: ellipsis berfungsi */
+}
+
+.item-name {
+  font-size: 0.92rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis; /* Nama panjang dipotong dengan "..." */
+}
+
+/* Label kategori kecil di bawah nama */
+.item-meta {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* Harga di kanan item */
+.item-price {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text-main);
+  white-space: nowrap; /* Angka tidak dipecah ke baris baru */
+}
+
+/* Tombol hapus (ikon tempat sampah) */
+.btn-delete {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  padding: 4px 6px;
+  border-radius: 6px;
+  transition: color 0.15s, background 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.btn-delete:hover {
+  color: var(--danger);
+  background: rgba(239, 68, 68, 0.08); /* Latar merah transparan saat hover */
+}
+
+/* Cegah event klik di dalam SVG meluap ke luar (sudah ditangani event delegation) */
+.btn-delete svg { pointer-events: none; }
+
+
+/* =========================================
+   12. CHART
+   -----------------------------------------
+   Area diagram donut (Chart.js) di kolom kanan.
+   Posisi sticky agar chart tetap terlihat
+   saat daftar transaksi di kiri di-scroll.
+   ========================================= */
+
+/* Kartu chart sticky — menempel di viewport saat scroll */
+.chart-card {
+  position: sticky;
+  top: 24px;
+}
+
+/* Wadah canvas dengan lebar maksimum agar diagram tidak terlalu besar */
+.chart-container {
+  position: relative;  /* Diperlukan oleh .chart-empty yang absolute */
+  width: 100%;
+  max-width: 240px;
+  margin: 0 auto 20px; /* Tengah-kan dan beri jarak bawah ke legend */
+}
+
+.chart-container canvas { display: block; }
+
+/* Area legend di bawah diagram */
+.chart-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Satu baris legend: [dot warna] [nama kategori] ... [persen · nominal] */
+.legend-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* Bagian kiri legend: dot + nama */
+.legend-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Titik warna bulat di legend */
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.legend-label {
+  font-size: 0.88rem;
+  color: var(--text-main);
+  font-weight: 500;
+}
+
+/* Teks persentase dan nominal di kanan legend */
+.legend-value {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+
+/* =========================================
+   13. EMPTY STATE
+   -----------------------------------------
+   Teks tengah yang muncul ketika belum ada data
+   (daftar transaksi kosong atau chart tidak ada data).
+   ========================================= */
+
+.empty-state {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  padding: 20px 0;
+}
+
+/*
+  Pesan kosong di tengah canvas chart.
+  Posisi absolute agar tepat di tengah canvas.
+*/
+.chart-empty {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100%;
+  padding: 0 8px;
+}
+
+
+/* =========================================
+   14. DATE RANGE SUMMARY
+   -----------------------------------------
+   Kartu "Summary Per Tanggal" yang memungkinkan
+   pengguna memilih rentang dari–sampai dan melihat
+   ringkasan pengeluaran di periode tersebut.
+   ========================================= */
+
+/* Kartu utama summary tanggal */
+.date-range-section {
+  margin-bottom: 20px;
+}
+
+/* Header kartu: judul di kiri, tombol toggle di kanan */
+.date-range-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0; /* Tidak ada jarak bawah karena picker di-toggle secara terpisah */
+}
+
+/* Hilangkan margin bawah section-title saat di dalam header ini */
+.date-range-header .section-title {
+  margin-bottom: 0;
+}
+
+/*
+  Tombol "ghost" — transparan, hanya ada border.
+  Dipakai untuk tombol yang kurang penting dibanding btn-primary.
+*/
+.btn-ghost {
+  background: none;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  color: var(--primary);
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 5px 12px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.btn-ghost:hover {
+  background: rgba(92, 110, 248, 0.07);
+  border-color: var(--primary);
+}
+
+/* Area picker tanggal — muncul saat diklik, dipisah garis atas */
+.date-range-picker {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+/* Baris input "Dari" → "Sampai" */
+.date-inputs {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+/* Satu field: label di atas + input tanggal di bawah */
+.date-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex: 1;
+  min-width: 130px; /* Agar tidak terlalu sempit */
+}
+
+/* Label "Dari" / "Sampai" di atas input */
+.date-field label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+/* Input tanggal (kalender bawaan browser) */
+.date-field input[type="date"] {
+  padding: 9px 12px;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  color: var(--text-main);
+  background: var(--bg);
+  outline: none;
+  transition: border-color 0.18s, box-shadow 0.18s;
+  cursor: pointer;
+}
+
+.date-field input[type="date"]:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(92, 110, 248, 0.12);
+  background: #fff;
+}
+
+/* Tanda panah "→" pemisah antar dua input */
+.date-sep {
+  font-size: 1.1rem;
+  color: var(--text-muted);
+  padding-bottom: 9px; /* Sejajarkan dengan input */
+  flex-shrink: 0;
+}
+
+/* Baris tombol preset cepat */
+.date-quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+/* Tiap tombol preset (Hari ini, 7 Hari, dst.) */
+.quick-btn {
+  padding: 4px 12px;
+  border-radius: 20px;
+  border: 1.5px solid var(--border);
+  background: var(--bg);
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+/* Tampilan saat hover atau saat preset sedang aktif */
+.quick-btn:hover,
+.quick-btn.active {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+
+/* Tombol "Terapkan" — ukurannya tidak full-width */
+.btn-apply {
+  width: auto;
+  padding: 9px 28px;
+}
+
+/* Panel hasil summary — muncul setelah "Terapkan" diklik */
+.date-range-result {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+/* Baris label periode aktif + tombol "Hapus filter" */
+.range-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Label yang menampilkan rentang aktif, misal: "1 Sep 2026 – 17 Sep 2026" */
+.range-active-label {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--primary);
+  background: rgba(92, 110, 248, 0.08);
+  padding: 4px 12px;
+  border-radius: 20px;
+}
+
+/* Tombol "× Hapus filter" — merah outline */
+.btn-clear-range {
+  font-size: 0.78rem;
+  padding: 4px 10px;
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.btn-clear-range:hover {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: var(--danger);
+}
+
+/* Grid 2x2 untuk 4 angka statistik (total, jumlah, rata-rata, terbesar) */
+.range-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+/* Satu sel statistik */
+.range-stat {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Label kecil di atas angka statistik */
+.range-stat-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+/* Angka statistik */
+.range-stat-value {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+/*
+  Area breakdown per kategori.
+  Setiap kategori punya progress bar horizontal yang
+  panjangnya proporsional terhadap total pengeluaran.
+*/
+.range-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+/* Satu baris breakdown: [dot] [nama] [bar] [persen] [nominal] */
+.breakdown-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Titik warna kategori */
+.breakdown-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Nama kategori (dipotong dengan ellipsis jika terlalu panjang) */
+.breakdown-name {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-main);
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Latar abu-abu untuk progress bar */
+.breakdown-bar-wrap {
+  flex: 2;
+  height: 6px;
+  background: var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+/* Isi progress bar (lebarnya di-set JS via style.width) */
+.breakdown-bar {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease; /* Animasi halus saat persentase berubah */
+}
+
+/* Teks persentase di kanan bar */
+.breakdown-pct {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  width: 34px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* Nominal rupiah di paling kanan */
+.breakdown-val {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-main);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Area rincian per hari — dipisah garis atas dari breakdown kategori */
+.range-daily-wrap {
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+
+/* Judul "RINCIAN HARIAN" */
+.range-daily-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 10px;
+}
+
+/* Daftar baris harian — bisa di-scroll jika banyak */
+.range-daily-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 260px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+/* Scrollbar tipis untuk daftar harian */
+.range-daily-list::-webkit-scrollbar       { width: 4px; }
+.range-daily-list::-webkit-scrollbar-track { background: transparent; }
+.range-daily-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+/* Satu baris harian: [tanggal] [jumlah transaksi] [total rupiah] */
+.daily-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 12px;
+  background: var(--bg);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+/* Tanggal di kiri */
+.daily-date {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-main);
+  min-width: 110px;
+}
+
+/* Jumlah transaksi di tengah */
+.daily-count {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  flex: 1;
+}
+
+/* Total rupiah hari itu di kanan (warna primary) */
+.daily-total {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--primary);
+  white-space: nowrap;
+}
+
+
+/* =========================================
+   15. RESPONSIVE
+   -----------------------------------------
+   Penyesuaian layout untuk layar kecil (mobile ≤ 640px).
+   Semua grid berubah menjadi 1 kolom agar tidak sempit.
+   ========================================= */
+
+@media (max-width: 640px) {
+
+  /* Grid utama: dari 2 kolom → 1 kolom */
+  .main-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Chart tidak lagi sticky karena tidak ada 2 kolom berdampingan */
+  .chart-card {
+    position: static;
+  }
+
+  /* Balance card: konten ditumpuk vertikal */
+  .balance-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  /* Perkecil angka saldo di layar kecil */
+  .balance-amount {
+    font-size: 1.4rem;
+  }
+
+  /* Perkecil judul di layar kecil */
+  .app-header h1 {
+    font-size: 1.6rem;
+  }
+
+  /* Summary row: dari 3 kolom → 2 kolom */
+  .summary-row {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  /* Kartu ke-3 (rata-rata/hari) memanjang penuh karena tidak pas 3 di 2 kolom */
+  .summary-row .summary-card:last-child {
+    grid-column: 1 / -1;
+  }
+
+  /* Form kategori kustom: dari 4 kolom → 2 kolom dengan 2 baris */
+  .custom-cat-form {
+    grid-template-columns: 1fr 52px;
+    grid-template-rows: auto auto;
+  }
+
+  /* Sembunyikan label "Warna" karena tidak cukup ruang */
+  .custom-cat-form .color-label { display: none; }
+
+  /* Color picker pindah ke baris 2 kolom 2 */
+  .custom-cat-form input[type="color"] {
+    grid-row: 2;
+    grid-column: 2;
+  }
+
+  /* Tombol "Tambah" pindah ke baris 2 kolom 1 */
+  .custom-cat-form .btn-secondary {
+    grid-row: 2;
+    grid-column: 1;
+  }
+
+  /* Stats summary tanggal tetap 2 kolom di mobile (tidak perlu 1 kolom) */
+  .range-stats-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  /* Input tanggal ditumpuk vertikal di mobile */
+  .date-inputs {
+    flex-direction: column;
+  }
+
+  /* Sembunyikan tanda panah "→" karena input sudah ditumpuk */
+  .date-sep {
+    display: none;
+  }
+
+}

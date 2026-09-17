@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<!--
+  index.html — Budget Tracker
+  ===========================
+  File ini adalah struktur utama halaman web.
+  Berisi semua elemen HTML yang terlihat oleh pengguna:
+    - Header / judul aplikasi
+    - Kartu saldo total pengeluaran + tombol filter periode
+    - Kartu ringkasan mingguan, bulanan, rata-rata harian
+    - Fitur summary per rentang tanggal kustom
+    - Form tambah pengeluaran
+    - Form tambah kategori custom
+    - Daftar transaksi dengan toolbar urutan
+    - Diagram donut distribusi pengeluaran (Chart.js)
+
+  Semua logika ada di  → app.js
+  Semua tampilan ada di → style.css
+-->
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <!-- Agar tampilan responsif di perangkat mobile -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Budget Tracker</title>
+
+  <!-- File CSS untuk semua gaya tampilan -->
+  <link rel="stylesheet" href="style.css" />
+
+  <!--
+    Chart.js v4.4.0 — pustaka grafik untuk membuat diagram donut.
+    Di-load dari CDN (tidak perlu install), harus ada sebelum app.js dijalankan.
+  -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+  <!-- Pembungkus utama — membatasi lebar halaman agar tidak terlalu lebar di layar besar -->
+  <div class="app-wrapper">
+
+    <!-- ══════════════════════════════════════
+         HEADER
+         Judul dan subjudul aplikasi
+         ══════════════════════════════════════ -->
+    <header class="app-header">
+      <h1>Budget Tracker</h1>
+      <p class="subtitle">Catat & pantau pengeluaranmu</p>
+    </header>
+
+    <!-- ══════════════════════════════════════
+         KARTU SALDO UTAMA
+         Menampilkan total pengeluaran sesuai
+         periode yang dipilih (Semua / Minggu / Bulan).
+         Nilai diperbarui otomatis oleh JavaScript.
+         ══════════════════════════════════════ -->
+    <section class="balance-card">
+      <div>
+        <!-- Label di atas angka -->
+        <span class="balance-label">Total Pengeluaran</span>
+        <!-- Angka total — diisi JS melalui id="total-balance" -->
+        <span class="balance-amount" id="total-balance">Rp 0</span>
+      </div>
+
+      <!-- Tombol filter periode.
+           data-period digunakan JS untuk menentukan filter mana yang aktif. -->
+      <div class="balance-period">
+        <button class="period-btn active" data-period="all">Semua</button>
+        <button class="period-btn" data-period="week">Minggu Ini</button>
+        <button class="period-btn" data-period="month">Bulan Ini</button>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════
+         KARTU RINGKASAN CEPAT
+         Tiga kartu kecil yang selalu menampilkan:
+           1. Total pengeluaran minggu berjalan
+           2. Total pengeluaran bulan berjalan
+           3. Rata-rata pengeluaran per hari bulan ini
+         Nilai diisi JavaScript secara otomatis.
+         ══════════════════════════════════════ -->
+    <div class="summary-row" id="summary-row">
+
+      <!-- Kartu 1: Minggu Ini -->
+      <div class="summary-card">
+        <span class="summary-label">Minggu Ini</span>
+        <span class="summary-value" id="summary-week">Rp 0</span>
+        <span class="summary-count" id="summary-week-count">0 transaksi</span>
+      </div>
+
+      <!-- Kartu 2: Bulan Ini -->
+      <div class="summary-card">
+        <span class="summary-label">Bulan Ini</span>
+        <span class="summary-value" id="summary-month">Rp 0</span>
+        <span class="summary-count" id="summary-month-count">0 transaksi</span>
+      </div>
+
+      <!-- Kartu 3: Rata-rata per hari -->
+      <div class="summary-card">
+        <span class="summary-label">Rata-rata / Hari</span>
+        <span class="summary-value" id="summary-avg">Rp 0</span>
+        <!-- Sub-teks kecil, diisi JS dengan "hari ke-X bulan ini" -->
+        <span class="summary-count" id="summary-avg-sub">bulan ini</span>
+      </div>
+
+    </div>
+
+    <!-- ══════════════════════════════════════
+         SUMMARY PER TANGGAL (RENTANG KUSTOM)
+         Pengguna bisa memilih tanggal dari–sampai
+         untuk melihat ringkasan pengeluaran di
+         periode tersebut. Ada juga preset cepat
+         (Hari ini, 7 Hari, Bulan Lalu, dll.)
+         ══════════════════════════════════════ -->
+    <section class="card date-range-section">
+
+      <!-- Baris header: judul + tombol buka/tutup picker -->
+      <div class="date-range-header">
+        <h2 class="section-title">📅 Summary Per Tanggal</h2>
+        <!--
+          Tombol toggle untuk membuka/menutup picker rentang tanggal.
+          aria-expanded diperbarui JS agar aksesibel bagi screen reader.
+        -->
+        <button class="btn-ghost" id="btn-toggle-daterange" aria-expanded="false">
+          Pilih Rentang ▾
+        </button>
+      </div>
+
+      <!--
+        PICKER RENTANG TANGGAL
+        Tersembunyi secara default (atribut hidden).
+        Ditampilkan saat tombol "Pilih Rentang" diklik.
+      -->
+      <div class="date-range-picker" id="date-range-picker" hidden>
+
+        <!-- Input tanggal manual: "Dari" dan "Sampai" -->
+        <div class="date-inputs">
+          <div class="date-field">
+            <label for="date-from">Dari</label>
+            <input type="date" id="date-from" />
+          </div>
+          <!-- Tanda panah pemisah antar dua input tanggal -->
+          <span class="date-sep">→</span>
+          <div class="date-field">
+            <label for="date-to">Sampai</label>
+            <input type="date" id="date-to" />
+          </div>
+        </div>
+
+        <!--
+          Tombol preset cepat.
+          data-quick digunakan JS di fungsi applyQuickPreset()
+          untuk menghitung dan mengisi tanggal dari–sampai otomatis.
+        -->
+        <div class="date-quick">
+          <button class="quick-btn" data-quick="today">Hari ini</button>
+          <button class="quick-btn" data-quick="yesterday">Kemarin</button>
+          <button class="quick-btn" data-quick="last7">7 Hari</button>
+          <button class="quick-btn" data-quick="last30">30 Hari</button>
+          <button class="quick-btn" data-quick="thismonth">Bulan Ini</button>
+          <button class="quick-btn" data-quick="lastmonth">Bulan Lalu</button>
+        </div>
+
+        <!-- Tombol untuk menerapkan rentang dan menampilkan hasil -->
+        <button class="btn-primary btn-apply" id="btn-apply-range">Terapkan</button>
+      </div>
+
+      <!--
+        PANEL HASIL SUMMARY RENTANG
+        Tersembunyi secara default (atribut hidden).
+        Ditampilkan setelah tombol "Terapkan" diklik dan data valid.
+        Berisi: label periode aktif, 4 angka statistik,
+                breakdown per kategori, rincian per hari.
+      -->
+      <div class="date-range-result" id="date-range-result" hidden>
+
+        <!-- Baris atas: label periode aktif + tombol hapus filter -->
+        <div class="range-label-row">
+          <!-- Diisi JS, contoh: "1 Sep 2026 – 17 Sep 2026" -->
+          <span class="range-active-label" id="range-active-label">—</span>
+          <!-- Tombol reset: menyembunyikan panel hasil dan mengosongkan input -->
+          <button class="btn-ghost btn-clear-range" id="btn-clear-range">× Hapus filter</button>
+        </div>
+
+        <!-- Grid 4 kartu statistik rentang -->
+        <div class="range-stats-grid">
+          <div class="range-stat">
+            <span class="range-stat-label">Total Pengeluaran</span>
+            <span class="range-stat-value" id="range-total">Rp 0</span>
+          </div>
+          <div class="range-stat">
+            <span class="range-stat-label">Jumlah Transaksi</span>
+            <span class="range-stat-value" id="range-count">0</span>
+          </div>
+          <div class="range-stat">
+            <span class="range-stat-label">Rata-rata / Hari</span>
+            <!-- total ÷ jumlah hari dalam rentang -->
+            <span class="range-stat-value" id="range-avg">Rp 0</span>
+          </div>
+          <div class="range-stat">
+            <span class="range-stat-label">Pengeluaran Terbesar</span>
+            <!-- Harga item tertinggi di rentang tersebut -->
+            <span class="range-stat-value" id="range-max">Rp 0</span>
+          </div>
+        </div>
+
+        <!--
+          Breakdown per kategori — diisi JS.
+          Setiap kategori ditampilkan dengan progress bar,
+          persentase, dan nominal.
+        -->
+        <div class="range-breakdown" id="range-breakdown"></div>
+
+        <!-- Rincian per hari — diisi JS, bisa di-scroll -->
+        <div class="range-daily-wrap">
+          <div class="range-daily-title">Rincian Harian</div>
+          <!-- Setiap baris: tanggal | jumlah transaksi | total rupiah -->
+          <div class="range-daily-list" id="range-daily-list"></div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════
+         GRID UTAMA (2 KOLOM)
+         Kiri  : Form + Kategori Custom + Daftar Transaksi
+         Kanan : Diagram Donut + Legend
+         ══════════════════════════════════════ -->
+    <div class="main-grid">
+
+      <!-- ── KOLOM KIRI ─────────────────────── -->
+      <div class="left-col">
+
+        <!-- ┌─────────────────────────────────┐
+             │  FORM TAMBAH PENGELUARAN        │
+             │  3 input: nama, harga, kategori │
+             └─────────────────────────────────┘ -->
+        <section class="card">
+          <h2 class="section-title">Tambah Pengeluaran</h2>
+          <form id="expense-form">
+
+            <!-- Input nama barang — teks bebas -->
+            <div class="form-group">
+              <label for="item-name">Nama Barang</label>
+              <input
+                type="text"
+                id="item-name"
+                placeholder="Contoh: Nasi Goreng"
+                autocomplete="off"
+                required
+              />
+            </div>
+
+            <!-- Input harga — angka positif -->
+            <div class="form-group">
+              <label for="item-price">Harga (Rp)</label>
+              <input
+                type="number"
+                id="item-price"
+                placeholder="Contoh: 25000"
+                min="1"
+                required
+              />
+            </div>
+
+            <!--
+              Dropdown kategori.
+              Opsi bawaan: Makanan, Transportasi, Hiburan.
+              Kategori custom ditambahkan JS ke bawah opsi bawaan.
+            -->
+            <div class="form-group">
+              <label for="item-category">Kategori</label>
+              <select id="item-category" required>
+                <option value="" disabled selected>Pilih kategori</option>
+                <option value="Makanan">🍔 Makanan</option>
+                <option value="Transportasi">🚗 Transportasi</option>
+                <option value="Hiburan">🎮 Hiburan</option>
+                <!-- Kategori custom akan di-inject JS di bawah ini -->
+              </select>
+            </div>
+
+            <!-- Tombol submit — memicu event 'submit' pada form -->
+            <button type="submit" class="btn-primary">Tambah</button>
+          </form>
+        </section>
+
+        <!-- ┌─────────────────────────────────┐
+             │  FORM TAMBAH KATEGORI CUSTOM    │
+             │  Nama + emoji + warna           │
+             └─────────────────────────────────┘ -->
+        <section class="card">
+          <h2 class="section-title">Kategori Custom</h2>
+
+          <!--
+            Layout grid 4 kolom: [nama] [emoji] [label warna] [color picker] [tombol tambah]
+            Pada mobile menjadi 2 kolom (lihat responsive di style.css).
+          -->
+          <div class="custom-cat-form">
+
+            <!-- Nama kategori yang akan muncul di dropdown -->
+            <input
+              type="text"
+              id="new-cat-name"
+              placeholder="Nama kategori"
+              maxlength="24"
+              autocomplete="off"
+            />
+
+            <!-- Emoji opsional, 1 karakter emoji dianjurkan -->
+            <input
+              type="text"
+              id="new-cat-emoji"
+              placeholder="Emoji (opsional)"
+              maxlength="4"
+              class="emoji-input"
+            />
+
+            <!-- Label teks untuk color picker di sebelahnya -->
+            <label class="color-label" for="new-cat-color">Warna</label>
+
+            <!-- Color picker — nilai hex digunakan sebagai warna dot & chart -->
+            <input type="color" id="new-cat-color" value="#10b981" />
+
+            <!-- Tombol submit kategori baru -->
+            <button type="button" id="btn-add-category" class="btn-secondary">+ Tambah</button>
+          </div>
+
+          <!--
+            Daftar chip kategori custom yang sudah ditambahkan.
+            Setiap chip berwarna sesuai pilihan, ada tombol × untuk menghapus.
+            Diisi oleh JS melalui fungsi renderCustomCatChips().
+          -->
+          <div class="custom-cat-list" id="custom-cat-list"></div>
+        </section>
+
+        <!-- ┌─────────────────────────────────┐
+             │  DAFTAR TRANSAKSI               │
+             │  Scrollable list + toolbar sort │
+             └─────────────────────────────────┘ -->
+        <section class="card">
+          <div class="section-header">
+            <h2 class="section-title">Daftar Transaksi</h2>
+            <!-- Hitungan item sesuai periode aktif — diisi JS -->
+            <span class="item-count" id="item-count">0 item</span>
+          </div>
+
+          <!--
+            Toolbar pengurutan.
+            data-sort digunakan JS di fungsi sortExpenses() untuk
+            menentukan arah sort yang aktif.
+          -->
+          <div class="list-toolbar">
+            <span class="toolbar-label">Urutkan:</span>
+            <div class="sort-group">
+              <button class="sort-btn active" data-sort="newest">Terbaru</button>
+              <button class="sort-btn" data-sort="oldest">Terlama</button>
+              <button class="sort-btn" data-sort="price-asc">Harga ↑</button>
+              <button class="sort-btn" data-sort="price-desc">Harga ↓</button>
+            </div>
+          </div>
+
+          <!--
+            Area daftar transaksi.
+            Item-item di-render oleh JS (fungsi renderTransactions()).
+            #empty-state ditampilkan saat tidak ada data.
+            Bisa di-scroll secara vertikal (max-height diatur CSS).
+          -->
+          <div class="transaction-list" id="transaction-list">
+            <p class="empty-state" id="empty-state">Belum ada transaksi. Tambahkan pengeluaranmu!</p>
+          </div>
+        </section>
+
+      </div><!-- /left-col -->
+
+      <!-- ── KOLOM KANAN ────────────────────── -->
+      <div class="right-col">
+
+        <!-- ┌─────────────────────────────────┐
+             │  DIAGRAM DONUT + LEGEND         │
+             │  Diperbarui otomatis oleh JS    │
+             └─────────────────────────────────┘ -->
+        <section class="card chart-card">
+          <h2 class="section-title">Distribusi Pengeluaran</h2>
+
+          <!--
+            Canvas adalah elemen tempat Chart.js menggambar diagram.
+            Ukuran dikontrol CSS (.chart-container max-width: 240px).
+          -->
+          <div class="chart-container" id="chart-container">
+            <canvas id="expense-chart"></canvas>
+            <!-- Pesan ini muncul di tengah canvas saat belum ada data -->
+            <p class="empty-state chart-empty" id="chart-empty">
+              Tambah transaksi untuk melihat grafik
+            </p>
+          </div>
+
+          <!--
+            Legend kustom di bawah diagram.
+            Dibuat manual oleh JS (bukan legend bawaan Chart.js)
+            agar tampilannya bisa dikontrol sepenuhnya.
+            Format setiap baris: [dot] [nama] | [persen] · [nominal]
+          -->
+          <div class="chart-legend" id="chart-legend"></div>
+        </section>
+
+      </div><!-- /right-col -->
+
+    </div><!-- /main-grid -->
+
+  </div><!-- /app-wrapper -->
+
+  <!--
+    app.js harus di-load SETELAH semua elemen HTML di atas,
+    karena JS butuh mengakses elemen-elemen tersebut via getElementById.
+    Letaknya di akhir <body> memastikan DOM sudah sepenuhnya terbentuk.
+  -->
+  <script src="app.js"></script>
+</body>
+</html>
